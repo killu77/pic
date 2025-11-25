@@ -59,12 +59,30 @@ class CredentialManager:
         self.filepath = filepath
         self.latest_harvest: Optional[Dict[str, Any]] = None
         self.last_updated: float = 0
-        self.refresh_event = asyncio.Event() # Event to block requests during refresh
-        self.refresh_complete_event = asyncio.Event() # Event to signal UI is ready after refresh
-        self.refresh_lock = asyncio.Lock() # Lock to ensure only one refresh triggers at a time
-        self.refresh_event.set() # Initially set (not refreshing)
-        self.refresh_complete_event.set()
+        self._refresh_event = None
+        self._refresh_complete_event = None
+        self._refresh_lock = None
         self.load_from_disk()
+
+    @property
+    def refresh_event(self):
+        if self._refresh_event is None:
+            self._refresh_event = asyncio.Event()
+            self._refresh_event.set()
+        return self._refresh_event
+
+    @property
+    def refresh_complete_event(self):
+        if self._refresh_complete_event is None:
+            self._refresh_complete_event = asyncio.Event()
+            self._refresh_complete_event.set()
+        return self._refresh_complete_event
+
+    @property
+    def refresh_lock(self):
+        if self._refresh_lock is None:
+            self._refresh_lock = asyncio.Lock()
+        return self._refresh_lock
 
     def load_from_disk(self):
         try:
@@ -982,11 +1000,28 @@ async def websocket_endpoint(websocket: WebSocket):
             harvester_clients.remove(websocket)
 
 async def request_token_refresh():
-    print("🔄 Requesting token refresh from frontend...")
+    print("🔄 Requesting token refresh...")
+    
+    # 1. Trigger Cloud Harvester (if running)
+    if 'harvester' in globals() and harvester and harvester.is_running:
+        print("☁️ Triggering Cloud Harvester...")
+        # We don't await this because perform_harvest might take time,
+        # and we want to trigger WS clients too.
+        # But wait, perform_harvest is async. We should probably fire and forget or await?
+        # Since we are inside a request handler (stream_chat), awaiting might block.
+        # But we need the result.
+        # Actually, CloudHarvester loop runs periodically. We can force an immediate run.
+        # Let's add a method to CloudHarvester to force harvest.
+        asyncio.create_task(harvester.perform_harvest())
+        return # If we have a cloud harvester, we might not need WS clients, or maybe both?
+               # Let's try both just in case.
+
+    # 2. Trigger WebSocket Clients (Local Browser)
     if not harvester_clients:
         print("⚠️ No harvester clients connected!")
         return
     
+    print("🔌 Requesting refresh from WebSocket clients...")
     message = json.dumps({"type": "refresh_token"})
     # Broadcast to all connected harvesters
     for ws in list(harvester_clients):
@@ -998,6 +1033,25 @@ async def request_token_refresh():
             # but if send fails we might want to remove it.
             if ws in harvester_clients:
                 harvester_clients.remove(ws)
+
+async def keep_alive_loop():
+    """Background task to refresh credentials periodically (every 45 mins)."""
+    print("⏰ Keep-Alive Task Started")
+    while True:
+        try:
+            # Wait for 45 minutes (2700 seconds)
+            # We check every minute to see if we need to exit or if we should trigger early
+            for _ in range(45):
+                await asyncio.sleep(60)
+            
+            print("⏰ Keep-Alive: Triggering scheduled refresh...")
+            await request_token_refresh()
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"⚠️ Keep-Alive Error: {e}")
+            await asyncio.sleep(60)
 
 async def main():
     config = uvicorn.Config(app, host="0.0.0.0", port=PORT, log_level="info")
@@ -1015,7 +1069,14 @@ async def main():
     global harvester
     harvester = None
     
+    # Check if we should run the cloud harvester
+    # 1. Explicitly enabled via ENABLE_AUTO_HARVEST
+    # 2. Implicitly enabled if GOOGLE_COOKIES is set
+    enable_cloud = os.environ.get("ENABLE_AUTO_HARVEST", "false").lower() == "true"
     if os.environ.get("GOOGLE_COOKIES"):
+        enable_cloud = True
+
+    if enable_cloud:
         try:
             from cloud_harvester import CloudHarvester
             harvester = CloudHarvester(cred_manager)
@@ -1026,6 +1087,9 @@ async def main():
             print("⚠️ Cloud Harvester dependencies (playwright) not found.")
     else:
         print("   👉 Please ensure the 'Harvester' userscript is running in your browser.")
+
+    # Start Keep-Alive Loop to proactively refresh tokens
+    asyncio.create_task(keep_alive_loop())
 
     await server.serve()
 
