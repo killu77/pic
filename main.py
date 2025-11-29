@@ -825,6 +825,26 @@ class VertexAIClient:
                         result_data = result.get('data')
                         if not result_data: continue
     
+                        # Check for Prompt Feedback (Blocking)
+                        prompt_feedback = result_data.get('promptFeedback')
+                        if prompt_feedback and 'blockReason' in prompt_feedback:
+                            block_reason = prompt_feedback['blockReason']
+                            print(f"⚠️ Content Blocked: {block_reason}")
+                            
+                            # Yield a message to the user explaining the block
+                            error_msg = f"⚠️ **Generation Error**: Content blocked by safety filters.\nReason: `{block_reason}`"
+                            chunk = {
+                                "id": f"chatcmpl-proxy-block-{uuid.uuid4()}",
+                                "object": "chat.completion.chunk",
+                                "created": int(time.time()),
+                                "model": "vertex-ai-proxy",
+                                "choices": [{"index": 0, "delta": {"content": error_msg}, "finish_reason": "stop"}]
+                            }
+                            yield f"data: {json.dumps(chunk)}\n\n"
+                            # We don't return here, we let the loop continue in case there are other results,
+                            # but usually a block is final for that candidate.
+                            continue
+
                         candidates = result_data.get('candidates')
                         if not candidates: continue
     
