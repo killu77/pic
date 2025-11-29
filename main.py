@@ -826,8 +826,11 @@ class VertexAIClient:
                         if not result_data: continue
     
                         # Check for Prompt Feedback (Blocking)
+                        # Only block if there are NO candidates, otherwise it might be a false positive or partial block
                         prompt_feedback = result_data.get('promptFeedback')
-                        if prompt_feedback and 'blockReason' in prompt_feedback:
+                        candidates = result_data.get('candidates')
+                        
+                        if prompt_feedback and 'blockReason' in prompt_feedback and not candidates:
                             block_reason = prompt_feedback['blockReason']
                             print(f"⚠️ Content Blocked: {block_reason}")
                             
@@ -841,8 +844,6 @@ class VertexAIClient:
                                 "choices": [{"index": 0, "delta": {"content": error_msg}, "finish_reason": "stop"}]
                             }
                             yield f"data: {json.dumps(chunk)}\n\n"
-                            # We don't return here, we let the loop continue in case there are other results,
-                            # but usually a block is final for that candidate.
                             continue
 
                         candidates = result_data.get('candidates')
