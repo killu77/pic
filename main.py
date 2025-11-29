@@ -950,6 +950,7 @@ app.add_middleware(
 )
 
 # Mount images directory
+os.makedirs("images", exist_ok=True)
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 @app.get("/")
