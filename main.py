@@ -20,6 +20,8 @@ HEADLESS = os.environ.get("HEADLESS", "false").lower() == "true"
 
 MODELS_CONFIG_FILE = "models.json"
 STATS_FILE = "stats.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMAGES_DIR = os.path.join(BASE_DIR, "images")
 
 # --- Token Stats Manager ---
 class TokenStatsManager:
@@ -845,7 +847,7 @@ class VertexAIClient:
                                         # Save image locally and return URL
                                         try:
                                             # Ensure images directory exists
-                                            os.makedirs("images", exist_ok=True)
+                                            os.makedirs(IMAGES_DIR, exist_ok=True)
                                             
                                             # Generate filename
                                             ext = "png"
@@ -853,7 +855,7 @@ class VertexAIClient:
                                             elif "webp" in mime_type: ext = "webp"
                                             
                                             filename = f"{uuid.uuid4()}.{ext}"
-                                            filepath = os.path.join("images", filename)
+                                            filepath = os.path.join(IMAGES_DIR, filename)
                                             
                                             # Decode and save
                                             with open(filepath, "wb") as f:
@@ -932,8 +934,8 @@ app.add_middleware(
 )
 
 # Mount images directory
-os.makedirs("images", exist_ok=True)
-app.mount("/images", StaticFiles(directory="images"), name="images")
+os.makedirs(IMAGES_DIR, exist_ok=True)
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
 @app.get("/")
 async def root():
