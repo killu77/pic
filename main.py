@@ -720,8 +720,15 @@ class VertexAIClient:
                                     # If no JSON start found, skip one char to avoid infinite loop
                                     buffer = buffer[1:]
                     
-                    # If we successfully processed the stream, break the retry loop
-                    break
+                    # If we successfully processed the stream, check if we actually got content
+                    if content_yielded:
+                        break
+                    else:
+                        print(f"⚠️ Attempt {attempt+1}: Stream finished with 200 OK but no content yielded.")
+                        if attempt < max_retries:
+                            print("🔄 Retrying request...")
+                            continue
+                        # If we are out of retries, we will fall through to the warning below
 
             except AuthError as e:
                 print(f"⚠️ Auth Error caught in stream: {e}")
@@ -799,6 +806,10 @@ class VertexAIClient:
                     # This error is usually not fatal, just a part of the stream.
                     return
     
+                if 'results' not in data:
+                    # Debug: Log unexpected JSON structure
+                    print(f"🔍 Debug: Received JSON without 'results': {json.dumps(data)[:1000]}")
+
                 if 'results' in data and data['results']:
                     for result in data['results']:
                         if not result: continue
