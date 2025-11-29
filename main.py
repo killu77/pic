@@ -954,8 +954,9 @@ class VertexAIClient:
                                                 # Fallback if no base_url provided
                                                 image_url = f"/images/{filename}"
                                             
-                                            image_md = f"![Generated Image]({image_url})"
-                                            delta['content'] = image_md
+                                            # Return raw URL instead of Markdown image
+                                            # image_md = f"![Generated Image]({image_url})"
+                                            delta['content'] = image_url
                                             print(f"🖼️ Image saved to {filepath} and served at {image_url}")
                                             
                                         except Exception as e:
