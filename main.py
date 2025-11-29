@@ -544,8 +544,14 @@ class VertexAIClient:
                 print(f"ℹ️ Set topK: {gen_config['topK']}")
                 
             if 'max_tokens' in kwargs and kwargs['max_tokens'] is not None:
-                gen_config['maxOutputTokens'] = int(kwargs['max_tokens'])
-                print(f"ℹ️ Set maxOutputTokens: {gen_config['maxOutputTokens']}")
+                # Only apply max_tokens if it's reasonably large, otherwise ignore it to prevent truncation
+                # Some clients send default low values (e.g. 256, 1024) which breaks image generation/thinking
+                client_max = int(kwargs['max_tokens'])
+                if client_max > 2048:
+                    gen_config['maxOutputTokens'] = client_max
+                    print(f"ℹ️ Set maxOutputTokens: {gen_config['maxOutputTokens']}")
+                else:
+                    print(f"⚠️ Ignoring low max_tokens from client: {client_max}. Using default/harvested value.")
                 
             if 'stop' in kwargs and kwargs['stop'] is not None:
                 gen_config['stopSequences'] = kwargs['stop'] if isinstance(kwargs['stop'], list) else [kwargs['stop']]
