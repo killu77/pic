@@ -368,7 +368,9 @@ class VertexAIClient:
             if system_instruction:
                 new_variables['systemInstruction'] = {"parts": [{"text": system_instruction.strip()}]}
 
-            # Disable Safety Filters
+            # Disable Safety Filters (Forcefully)
+            # We use OFF instead of BLOCK_NONE for some internal APIs if applicable, but BLOCK_NONE is standard.
+            # We also ensure this overwrites anything from the client.
             new_variables['safetySettings'] = [
                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
                 {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
