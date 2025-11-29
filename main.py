@@ -1138,6 +1138,28 @@ async def update_cookies(request: Request):
     else:
         return StreamingResponse(iter(["<h1>⚠️ Cloud Harvester is not running. (Did you set GOOGLE_COOKIES env var?)</h1>"]), media_type="text/html")
 
+@app.get("/debug/images")
+async def list_images():
+    """Debug endpoint to list files in the images directory."""
+    try:
+        files = os.listdir(IMAGES_DIR)
+        file_info = []
+        for f in files:
+            path = os.path.join(IMAGES_DIR, f)
+            file_info.append({
+                "name": f,
+                "size": os.path.getsize(path),
+                "path": path
+            })
+        return {
+            "base_dir": BASE_DIR,
+            "images_dir": IMAGES_DIR,
+            "files": file_info,
+            "cwd": os.getcwd()
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 # --- WebSocket Server (For Harvester) ---
 # Store connected harvester clients
 harvester_clients: set[WebSocket] = set()
