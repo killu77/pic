@@ -572,21 +572,8 @@ class VertexAIClient:
                 })
 
             # 2. Image Generation
-            # Inject imageGenerationSpec
-            has_img_gen = False
-            for tool in new_variables['tools']:
-                if 'imageGenerationSpec' in tool:
-                    has_img_gen = True
-                    break
-            
-            if not has_img_gen:
-                new_variables['tools'].append({
-                    "imageGenerationSpec": {
-                        "aspectRatio": "1:1",
-                        "imageCount": 1,
-                        "personGeneration": "ALLOW_ALL"
-                    }
-                })
+            # Removed imageGenerationSpec injection as it causes "invalid tool_type" errors.
+            # Image generation is handled via generationConfig.imageConfig.
 
             # DEBUG: Print all generation config parameters for inspection
             if resolution_mode or thinking_mode:
