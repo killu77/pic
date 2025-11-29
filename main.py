@@ -563,12 +563,7 @@ class VertexAIClient:
                 # Injecting Google Search Retrieval (Standard for Vertex AI)
                 # and webGroundingSpec as requested (if they are distinct or aliases)
                 new_variables['tools'].append({
-                    "googleSearchRetrieval": {
-                        "dynamicRetrievalConfig": {
-                            "mode": "MODE_DYNAMIC",
-                            "dynamicThreshold": 0.7
-                        }
-                    }
+                    "googleSearch": {}
                 })
 
             # 2. Image Generation
