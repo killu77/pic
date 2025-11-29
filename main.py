@@ -966,7 +966,8 @@ app.add_middleware(
 
 # Mount images directory
 os.makedirs(IMAGES_DIR, exist_ok=True)
-app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+# Fix: Mount to /images explicitly to match the URL structure
+app.mount("/images", StaticFiles(directory=IMAGES_DIR, html=True), name="images")
 
 @app.on_event("startup")
 async def startup_event():
