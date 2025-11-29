@@ -21,7 +21,15 @@ HEADLESS = os.environ.get("HEADLESS", "false").lower() == "true"
 MODELS_CONFIG_FILE = "models.json"
 STATS_FILE = "stats.json"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-IMAGES_DIR = os.path.join(BASE_DIR, "images")
+
+# Determine Images Directory
+# Check for Hugging Face Persistent Storage or generic /data volume
+if os.path.exists("/data") and os.access("/data", os.W_OK):
+    IMAGES_DIR = os.path.join("/data", "images")
+    print(f"📂 Using persistent storage at {IMAGES_DIR}")
+else:
+    IMAGES_DIR = os.path.join(BASE_DIR, "images")
+    print(f"📂 Using ephemeral storage at {IMAGES_DIR}")
 
 # --- Token Stats Manager ---
 class TokenStatsManager:
@@ -867,6 +875,8 @@ class VertexAIClient:
                                                 decoded_data = base64.b64decode(b64_data)
                                                 with open(filepath, "wb") as f:
                                                     f.write(decoded_data)
+                                                    f.flush()
+                                                    os.fsync(f.fileno())
                                                 
                                                 if os.path.exists(filepath):
                                                     print(f"✅ File written successfully: {filepath} ({os.path.getsize(filepath)} bytes)")
@@ -986,6 +996,7 @@ async def startup_event():
     print(f"📂 Current Working Directory: {os.getcwd()}")
     print(f"📂 Base Directory: {BASE_DIR}")
     print(f"📂 Images Directory: {IMAGES_DIR}")
+    print(f"🌐 SPACE_HOST: {os.environ.get('SPACE_HOST', 'Not Set')}")
     # Create a test file to verify permissions and path
     test_path = os.path.join(IMAGES_DIR, "test.txt")
     try:
@@ -1262,7 +1273,15 @@ async def keep_alive_loop():
             await asyncio.sleep(60)
 
 async def main():
-    config = uvicorn.Config(app, host="0.0.0.0", port=PORT, log_level="info")
+    # Configure Uvicorn with proxy headers support for correct URL generation in Spaces
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=PORT,
+        log_level="info",
+        proxy_headers=True,
+        forwarded_allow_ips="*"
+    )
     server = uvicorn.Server(config)
 
     print(f"\n🚀 Headful Proxy Started")
