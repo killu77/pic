@@ -858,9 +858,15 @@ class VertexAIClient:
                                             filepath = os.path.join(IMAGES_DIR, filename)
                                             
                                             # Decode and save
+                                            print(f"💾 Saving image to: {filepath}")
                                             with open(filepath, "wb") as f:
                                                 f.write(base64.b64decode(b64_data))
                                             
+                                            if os.path.exists(filepath):
+                                                print(f"✅ File written successfully: {filepath} ({os.path.getsize(filepath)} bytes)")
+                                            else:
+                                                print(f"❌ File NOT found after writing: {filepath}")
+
                                             # Construct URL
                                             # Hugging Face Space specific handling
                                             if "hf.space" in base_url:
@@ -961,6 +967,20 @@ app.add_middleware(
 # Mount images directory
 os.makedirs(IMAGES_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+
+@app.on_event("startup")
+async def startup_event():
+    print(f"📂 Current Working Directory: {os.getcwd()}")
+    print(f"📂 Base Directory: {BASE_DIR}")
+    print(f"📂 Images Directory: {IMAGES_DIR}")
+    # Create a test file to verify permissions and path
+    test_path = os.path.join(IMAGES_DIR, "test.txt")
+    try:
+        with open(test_path, "w") as f:
+            f.write("Test file")
+        print(f"✅ Created test file at {test_path}")
+    except Exception as e:
+        print(f"❌ Failed to create test file: {e}")
 
 @app.get("/")
 async def root():
