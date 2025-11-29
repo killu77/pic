@@ -862,7 +862,32 @@ class VertexAIClient:
                                                 f.write(base64.b64decode(b64_data))
                                             
                                             # Construct URL
-                                            if base_url:
+                                            # Hugging Face Space specific handling
+                                            if "hf.space" in base_url:
+                                                # Extract space name from base_url if possible, or rely on relative path
+                                                # But relative path /images/... might not work if the client expects a full URL
+                                                # Let's try to construct the correct HF URL
+                                                # Format: https://{username}-{space_name}.hf.space/images/{filename}
+                                                
+                                                # Actually, if we are behind a proxy (like HF Spaces), base_url might be internal.
+                                                # The safest bet for HF Spaces is often a relative URL if the client supports it,
+                                                # OR constructing the public URL if we know the space name.
+                                                
+                                                # However, user feedback suggests they want the space name as prefix.
+                                                # Let's use the incoming request's base_url which should be correct if forwarded properly,
+                                                # BUT sometimes it's http://0.0.0.0:7860 internally.
+                                                
+                                                # If base_url is internal (localhost/0.0.0.0), we should try to use the public one if env var exists
+                                                # HF Spaces usually set SPACE_HOST or similar? No, usually SPACE_ID.
+                                                
+                                                space_host = os.environ.get("SPACE_HOST") # e.g. username-spacename.hf.space
+                                                if space_host:
+                                                    image_url = f"https://{space_host}/images/{filename}"
+                                                else:
+                                                    # Fallback to the request's base_url, ensuring no double slash
+                                                    base = base_url.rstrip('/')
+                                                    image_url = f"{base}/images/{filename}"
+                                            elif base_url:
                                                 # Remove trailing slash if present
                                                 base = base_url.rstrip('/')
                                                 image_url = f"{base}/images/{filename}"
