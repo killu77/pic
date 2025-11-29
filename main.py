@@ -859,13 +859,25 @@ class VertexAIClient:
                                             
                                             # Decode and save
                                             print(f"💾 Saving image to: {filepath}")
-                                            with open(filepath, "wb") as f:
-                                                f.write(base64.b64decode(b64_data))
-                                            
-                                            if os.path.exists(filepath):
-                                                print(f"✅ File written successfully: {filepath} ({os.path.getsize(filepath)} bytes)")
-                                            else:
-                                                print(f"❌ File NOT found after writing: {filepath}")
+                                            try:
+                                                # Fix: Ensure b64_data is clean
+                                                if "," in b64_data:
+                                                    b64_data = b64_data.split(",", 1)[1]
+                                                
+                                                decoded_data = base64.b64decode(b64_data)
+                                                with open(filepath, "wb") as f:
+                                                    f.write(decoded_data)
+                                                
+                                                if os.path.exists(filepath):
+                                                    print(f"✅ File written successfully: {filepath} ({os.path.getsize(filepath)} bytes)")
+                                                else:
+                                                    print(f"❌ File NOT found after writing: {filepath}")
+                                            except Exception as write_err:
+                                                print(f"❌ Error writing file: {write_err}")
+                                                # Fallback to data URI if write fails
+                                                image_md = f"![Generated Image](data:{mime_type};base64,{b64_data})"
+                                                delta['content'] = image_md
+                                                continue
 
                                             # Construct URL
                                             # Hugging Face Space specific handling
