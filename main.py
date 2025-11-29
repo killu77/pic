@@ -799,7 +799,7 @@ class VertexAIClient:
                     return
                 
                 # Debug: Log the raw data received from Google
-                # print(f"🔍 Google Raw Chunk: {json.dumps(data, indent=2)[:500]}...")
+                print(f"🔍 Google Raw Chunk: {json.dumps(data, indent=2)[:1000]}...")
     
                 if 'error' in data:
                     print(f"⚠️ Google Stream Error: {data['error']}")
